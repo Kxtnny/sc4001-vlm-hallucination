@@ -1,0 +1,11 @@
+# Data and results live on Google Drive, never in git
+data/
+results/
+*.jsonl
+*.pt
+*.safetensors
+__pycache__/
+.pytest_cache/
+.ipynb_checkpoints/
+.DS_Store
+.venv/

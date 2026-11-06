@@ -1,0 +1,9 @@
+# torch is preinstalled on Colab; install it yourself on a laptop (only needed for tests there).
+transformers==5.22.2   # tested with Qwen2-VL code in this repo; do not upgrade mid-project
+pillow
+tqdm
+numpy
+pandas
+matplotlib
+scikit-learn           # AUROC for E3
+pytest

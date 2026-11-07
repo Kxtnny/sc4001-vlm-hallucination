@@ -1,0 +1,3 @@
+# Shell and SLURM scripts must keep Unix line endings to run on TC1.
+*.sh text eol=lf
+*.sbatch text eol=lf

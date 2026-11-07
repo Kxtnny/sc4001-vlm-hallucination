@@ -45,6 +45,11 @@ laptop (Claude Code) --git push--> GitHub --git pull--> Colab (T4 GPU) --writes-
    with notebook access on. Each teammate uses their own token.
 4. Edit `REPO = ...` in cell 3, then run cells 1–5 (every session) and cell 6 (once for the team).
 
+## Running on the CCDS GPU cluster (TC1)
+Long jobs can also run as SLURM batch jobs on TC1 (V100 32 GB, no browser tab to keep open).
+Setup, job submission and copying results back to Drive are in [`tc1/README.md`](tc1/README.md).
+Run every test-set result that goes into one table on the same hardware, so the comparison stays controlled.
+
 ## Daily workflow
 1. `git pull` on your laptop; make changes with Claude Code; run `python -m pytest -q tests`.
 2. `git commit` and `git push` (small commits, clear messages). Use a branch if you are touching
@@ -68,6 +73,8 @@ otherwise every run creates merge conflicts.
 | `scripts/prepare_data.py` | Downloads data, builds frozen dev/test splits |
 | `scripts/sanity_check.py` | E0 |
 | `scripts/eval_pope.py` | E1 (and later: other methods via `--tag`) |
+| `scripts/compare_timing.py` | Compares E0 speed reports from different machines |
+| `tc1/` | SLURM job scripts and setup notes for the CCDS TC1 cluster |
 | `tests/` | CPU tests, including a tiny random Qwen2-VL for the attention helpers |
 | `notebooks/colab_runner.ipynb` | The Colab runner |
 | `RUN_LOG.md` | Every run we performed |
@@ -81,7 +88,7 @@ greedy decoding, images limited to 200,704 pixels (at most 256 image tokens).
 ```bash
 export SC4001_ROOT=/content/drive/MyDrive/sc4001   # set automatically by the notebook
 python scripts/prepare_data.py                     # data + frozen splits (seed 0)
-python scripts/sanity_check.py                     # E0
+python scripts/sanity_check.py                     # E0 (+ speed benchmark)
 python scripts/eval_pope.py --split all            # E1: Table "POPE baseline"
 ```
 

@@ -9,3 +9,7 @@ __pycache__/
 .ipynb_checkpoints/
 .DS_Store
 .venv/
+
+# SLURM job logs (TC1)
+*.out
+*.err

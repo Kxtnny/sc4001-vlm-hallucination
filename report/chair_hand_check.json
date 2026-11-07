@@ -1,0 +1,250 @@
+{
+ "description": "Random sample (random.seed(0); random.sample of the 341 CHAIR-hallucinated mentions in results/chair/baseline/chair_test_scored.jsonl, in file order) of 30 mentions, labelled by reading the caption context only (not the image). Labels were proposed by Claude and must be checked by the team.",
+ "n_hallucinated_total": 341,
+ "counts": {
+  "scoring artefact": 18,
+  "possible real hallucination (or missing annotation)": 12
+ },
+ "rows": [
+  {
+   "image": "COCO_val2014_000000329940.jpg",
+   "word": "bowl",
+   "node": "bowl",
+   "start": 406,
+   "label": "scoring artefact",
+   "note": "word sense: \"mixer bowl\" of a cement truck"
+  },
+  {
+   "image": "COCO_val2014_000000351744.jpg",
+   "word": "container",
+   "node": "bowl",
+   "start": 583,
+   "label": "scoring artefact",
+   "note": "synonym list: \"containers\" counted as bowl"
+  },
+  {
+   "image": "COCO_val2014_000000043345.jpg",
+   "word": "table",
+   "node": "dining table",
+   "start": 583,
+   "label": "possible real hallucination (or missing annotation)",
+   "note": "hedged \"possibly a table\""
+  },
+  {
+   "image": "COCO_val2014_000000224509.jpg",
+   "word": "player",
+   "node": "person",
+   "start": 220,
+   "label": "scoring artefact",
+   "note": "word sense: \"DVD player\" counted as person"
+  },
+  {
+   "image": "COCO_val2014_000000416337.jpg",
+   "word": "bed",
+   "node": "bed",
+   "start": 433,
+   "label": "scoring artefact",
+   "note": "word sense: \"truck bed\""
+  },
+  {
+   "image": "COCO_val2014_000000407970.jpg",
+   "word": "container",
+   "node": "bowl",
+   "start": 1081,
+   "label": "scoring artefact",
+   "note": "synonym list: \"container\" counted as bowl"
+  },
+  {
+   "image": "COCO_val2014_000000341164.jpg",
+   "word": "streetlight",
+   "node": "traffic light",
+   "start": 587,
+   "label": "scoring artefact",
+   "note": "synonym list: \"streetlights\" counted as traffic light"
+  },
+  {
+   "image": "COCO_val2014_000000241318.jpg",
+   "word": "book",
+   "node": "book",
+   "start": 1175,
+   "label": "possible real hallucination (or missing annotation)",
+   "note": "\"a book or some sort of\""
+  },
+  {
+   "image": "COCO_val2014_000000394635.jpg",
+   "word": "car",
+   "node": "car",
+   "start": 569,
+   "label": "scoring artefact",
+   "note": "word sense: \"train cars\""
+  },
+  {
+   "image": "COCO_val2014_000000301029.jpg",
+   "word": "chair",
+   "node": "chair",
+   "start": 806,
+   "label": "possible real hallucination (or missing annotation)",
+   "note": "\"other tables and chairs\" in the background"
+  },
+  {
+   "image": "COCO_val2014_000000483374.jpg",
+   "word": "seat",
+   "node": "chair",
+   "start": 365,
+   "label": "scoring artefact",
+   "note": "synonym list: train \"seat\" counted as chair"
+  },
+  {
+   "image": "COCO_val2014_000000188044.jpg",
+   "word": "phone",
+   "node": "cell phone",
+   "start": 214,
+   "label": "possible real hallucination (or missing annotation)",
+   "note": "hedged \"possibly a phone\""
+  },
+  {
+   "image": "COCO_val2014_000000413779.jpg",
+   "word": "car",
+   "node": "car",
+   "start": 955,
+   "label": "scoring artefact",
+   "note": "word sense: \"train cars\""
+  },
+  {
+   "image": "COCO_val2014_000000115875.jpg",
+   "word": "book",
+   "node": "book",
+   "start": 707,
+   "label": "possible real hallucination (or missing annotation)",
+   "note": "\"red book or magazine on the floor\""
+  },
+  {
+   "image": "COCO_val2014_000000233236.jpg",
+   "word": "table",
+   "node": "dining table",
+   "start": 489,
+   "label": "possible real hallucination (or missing annotation)",
+   "note": "\"small table or side table\""
+  },
+  {
+   "image": "COCO_val2014_000000081943.jpg",
+   "word": "orange",
+   "node": "orange",
+   "start": 810,
+   "label": "scoring artefact",
+   "note": "colour: \"the vase is orange\""
+  },
+  {
+   "image": "COCO_val2014_000000520871.jpg",
+   "word": "knife",
+   "node": "knife",
+   "start": 720,
+   "label": "possible real hallucination (or missing annotation)",
+   "note": "knife next to fork and pizza (co-occurrence)"
+  },
+  {
+   "image": "COCO_val2014_000000222094.jpg",
+   "word": "bench",
+   "node": "bench",
+   "start": 1138,
+   "label": "possible real hallucination (or missing annotation)",
+   "note": "\"wooden bench in the foreground\""
+  },
+  {
+   "image": "COCO_val2014_000000435359.jpg",
+   "word": "clock",
+   "node": "clock",
+   "start": 945,
+   "label": "possible real hallucination (or missing annotation)",
+   "note": "\"a small clock\" on a shelf"
+  },
+  {
+   "image": "COCO_val2014_000000496800.jpg",
+   "word": "people",
+   "node": "person",
+   "start": 979,
+   "label": "scoring artefact",
+   "note": "negation: \"no visible boats or people\""
+  },
+  {
+   "image": "COCO_val2014_000000118246.jpg",
+   "word": "doughnut",
+   "node": "donut",
+   "start": 1004,
+   "label": "possible real hallucination (or missing annotation)",
+   "note": "doughnuts in the background (co-occurrence)"
+  },
+  {
+   "image": "COCO_val2014_000000248559.jpg",
+   "word": "keyboard",
+   "node": "keyboard",
+   "start": 124,
+   "label": "scoring artefact",
+   "note": "part of another object: laptop keyboard"
+  },
+  {
+   "image": "COCO_val2014_000000089459.jpg",
+   "word": "sandwich",
+   "node": "sandwich",
+   "start": 249,
+   "label": "scoring artefact",
+   "note": "depicted object: sandwich in a drawing on a sign"
+  },
+  {
+   "image": "COCO_val2014_000000057377.jpg",
+   "word": "remote",
+   "node": "remote",
+   "start": 1128,
+   "label": "scoring artefact",
+   "note": "word sense: \"a remote, natural landscape\""
+  },
+  {
+   "image": "COCO_val2014_000000272008.jpg",
+   "word": "bed",
+   "node": "bed",
+   "start": 199,
+   "label": "scoring artefact",
+   "note": "word sense: \"bed of hay\""
+  },
+  {
+   "image": "COCO_val2014_000000386164.jpg",
+   "word": "bowl",
+   "node": "bowl",
+   "start": 761,
+   "label": "scoring artefact",
+   "note": "word sense: bowl of a spoon"
+  },
+  {
+   "image": "COCO_val2014_000000459934.jpg",
+   "word": "bowl",
+   "node": "bowl",
+   "start": 491,
+   "label": "scoring artefact",
+   "note": "word sense: \"toilet bowl\""
+  },
+  {
+   "image": "COCO_val2014_000000089459.jpg",
+   "word": "cup",
+   "node": "cup",
+   "start": 276,
+   "label": "scoring artefact",
+   "note": "depicted object: cup in a drawing on a sign"
+  },
+  {
+   "image": "COCO_val2014_000000287741.jpg",
+   "word": "mouse",
+   "node": "mouse",
+   "start": 503,
+   "label": "possible real hallucination (or missing annotation)",
+   "note": "computer mouse next to keyboard (co-occurrence)"
+  },
+  {
+   "image": "COCO_val2014_000000362714.jpg",
+   "word": "backpack",
+   "node": "backpack",
+   "start": 998,
+   "label": "possible real hallucination (or missing annotation)",
+   "note": "pedestrians \"carrying backpacks\""
+  }
+ ]
+}

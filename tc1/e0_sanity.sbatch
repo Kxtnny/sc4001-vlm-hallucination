@@ -16,8 +16,7 @@
 # Output: e0_sanity_<jobid>.out / .err in the repo root, and
 #         ~/sc4001/results/sanity/sanity_report_<gpu>.json
 
-module load anaconda
-source activate sc4001
+source "$HOME/venvs/sc4001/bin/activate"   # created by tc1/setup_env.sh
 set -eo pipefail
 
 export SC4001_ROOT=$HOME/sc4001   # data/ and results/ live here. TC1 has NO backup: copy results to Drive.

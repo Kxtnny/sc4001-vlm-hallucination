@@ -18,7 +18,7 @@ and copy files there), and there is **no backup** of your home directory.
    cd sc4001-vlm-hallucination
    ```
    For a private repo, enter your GitHub username and a fine-grained token (read access) as the password.
-3. **Create the environment and download the model** (head node, installs only):
+3. **Create the Python environment (a venv in `~/venvs/sc4001`) and download the model** (head node, installs only):
    ```bash
    bash tc1/setup_env.sh
    ```
@@ -49,6 +49,8 @@ To compare with Colab, copy `~/sc4001/results/sanity/sanity_report_tesla-v100-*.
 |---|---|
 | Job stays `PD` with `QOSMax...` | You asked for more than your QoS; check with `MyTCinfo` and lower `--mem` / `--time` |
 | Job stays `PD` with `Resources` / `Priority` | The cluster is busy; it will start when a GPU is free |
+| `conda create` fails with `Too many levels of symbolic links` | Expected on TC1 home directories; that is why `setup_env.sh` builds a venv instead of a conda env. Clean up with `rm -rf ~/.conda/pkgs/*` |
+| `No such file .../venvs/sc4001/bin/activate` in the job log | Run `bash tc1/setup_env.sh` first |
 | `no kernel image is available` | The PyTorch build lacks V100 kernels: re-run `setup_env.sh` with the cu126 index (the default) |
 | `LocalEntryNotFoundError` / offline errors | The model is not in `~/hf_cache`: re-run the download line of `setup_env.sh` |
 | `No POPE questions at ...` | The data folder is not at `~/sc4001/data` (step 4) |

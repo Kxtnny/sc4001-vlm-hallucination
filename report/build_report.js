@@ -1,6 +1,6 @@
 // Builds report/SC4001_report.docx from the section modules and results/report/numbers.json.
 //
-//   node report/build_report.js            (needs the npm package "docx"; set NODE_PATH to the global
+//   node report/build_report.js --overwrite  (needs the npm package "docx"; set NODE_PATH to the global
 //                                            node_modules if it is installed globally)
 //   powershell -File report/to_pdf.ps1     (Word: refreshes the table of contents, saves the PDF)
 //
@@ -89,5 +89,13 @@ const doc = new Document({
   ],
 });
 
+// The team edits SC4001_report.docx directly in Word, so never overwrite it silently: rebuilding from the
+// scripts would discard those edits. Pass --overwrite to regenerate it anyway.
 const out = path.join(__dirname, "SC4001_report.docx");
+if (fs.existsSync(out) && !process.argv.includes("--overwrite")) {
+  console.error(`${out} already exists and may contain edits made in Word; not overwriting.
+` +
+    "Run with --overwrite to rebuild it from the scripts (this discards edits made in Word).");
+  process.exit(1);
+}
 Packer.toBuffer(doc).then((buf) => { fs.writeFileSync(out, buf); console.log("Wrote", out); });

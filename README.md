@@ -164,12 +164,19 @@ python scripts/make_submission_zip.py                         # SC4001_code.zip 
 python -m pytest -q tests                                     # unit tests (CPU, ~40 s)
 ```
 
-**Report.** With Node.js and the `docx` npm package (`npm install docx`), then Microsoft Word for the PDF:
+**Report.** `report/SC4001_report.docx` is the working copy of the report: **edit it directly in Word**
+(cover page names and group number, AI Use Statement, wording), then save it as PDF from Word
+(File > Save As > PDF) or run `report/to_pdf.ps1`, which refreshes the contents page and exports
+`report/SC4001_report.pdf` without touching the text. The first version was generated from the saved
+results with Node.js and the `docx` npm package (`npm install docx`):
 
 ```bash
-SC4001_RESULTS=$SC4001_ROOT/results node report/build_report.js      # -> report/SC4001_report.docx
-powershell -ExecutionPolicy Bypass -File report/to_pdf.ps1            # refresh contents, -> report/SC4001_report.pdf
+SC4001_RESULTS=$SC4001_ROOT/results node report/build_report.js --overwrite   # regenerate the .docx (DISCARDS Word edits)
+powershell -ExecutionPolicy Bypass -File report/to_pdf.ps1                     # fill in contents, save .docx, -> PDF
 ```
+
+`build_report.js` refuses to overwrite an existing `.docx` without `--overwrite`, so edits made in Word are
+not lost by accident.
 
 Outputs: per-example JSONL and metrics under `results/{pope,chair,attention}/<tag>/`, analyses under
 `results/analysis/`, the sweep under `results/sweep/`, figures under `results/figures/`, tables under

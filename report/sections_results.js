@@ -241,7 +241,7 @@ function appendix(N, FIG) {
     "python scripts/prepare_data.py    (COCO val2014 images and annotations, POPE files, CHAIR synonyms, dev split)",
     "bash scripts/run_all.sh           (E0 to E6 in order; resumable; about 8 hours on an RTX 4060 Laptop GPU)",
     "python scripts/make_report.py     (every table and numbers.json from the saved outputs, no GPU)",
-    "node report/build_report.js; powershell -File report/to_pdf.ps1   (this report)",
+    "node report/build_report.js --overwrite; powershell -File report/to_pdf.ps1   (first draft of this report, then edited in Word)",
   ];
   return [
     H1("Appendix"),

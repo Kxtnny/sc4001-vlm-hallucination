@@ -1,5 +1,8 @@
-# Opens report/SC4001_report.docx in Word, fills in the table of contents and writes
-# report/SC4001_report.pdf.  Usage: powershell -ExecutionPolicy Bypass -File report/to_pdf.ps1
+# Opens report/SC4001_report.docx in Word, fills in the table of contents, saves the .docx (so it opens
+# with a finished contents page, ready to edit in Word) and writes report/SC4001_report.pdf.
+# Usage: powershell -ExecutionPolicy Bypass -File report/to_pdf.ps1
+# After editing the .docx in Word, export the PDF from Word itself (File > Save As > PDF), or run this
+# script again: it only refreshes the contents page and never changes the text.
 #
 # Two workarounds for Word automation on this machine:
 #  * docx-js marks the contents field as "dirty", which makes Word show a hidden "update fields?"
@@ -29,17 +32,18 @@ try {
 $word = New-Object -ComObject Word.Application
 $word.Visible = $false
 $word.DisplayAlerts = 0
-$null = $word.Documents.Open($docx, $false, $true)   # read-only: the .docx is not modified
+$null = $word.Documents.Open($docx)
 
 $child = @"
 `$w = [Runtime.InteropServices.Marshal]::GetActiveObject('Word.Application')
 try {
     `$d = `$w.Documents.Item(1)
     foreach (`$toc in `$d.TablesOfContents) { `$toc.Update() }
+    `$d.Save()
     `$d.ExportAsFixedFormat('$pdf', 17)
     'Pages: ' + `$d.ComputeStatistics(2)
     `$d.Close(0)
 } finally { `$w.Quit(0) }
 "@
 powershell -NoProfile -ExecutionPolicy Bypass -Command $child
-"Wrote $pdf"
+"Wrote $docx and $pdf"

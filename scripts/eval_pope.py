@@ -25,11 +25,13 @@ from tqdm import tqdm
 
 from halluc import config
 from halluc.data import load_image, load_pope, subsample
-from halluc.io_utils import JsonlWriter, read_jsonl, run_metadata, save_json
+from halluc.io_utils import JsonlWriter, read_jsonl, run_metadata, save_json, selected_setting
 from halluc.metrics import parse_yes_no, pope_metrics
 
 
-def evaluate_split(vlm, split, args, out_dir):
+
+def evaluate_split(vlm, split, args, out_dir, signals=False):
+    """Answer (and resume) every selected question of one split; returns its metrics."""
     questions = subsample(load_pope(split), args.limit)
     out_path = out_dir / f"{split}.jsonl"
     done = {r["question_id"]: r for r in read_jsonl(out_path)}
@@ -38,20 +40,31 @@ def evaluate_split(vlm, split, args, out_dir):
           f"{len(todo)} to run")
 
     if todo and vlm is not None:
-        cached_name, cached_img = None, None
+        bs = getattr(args, "batch_size", config.POPE_BATCH_SIZE)
+        images = {}
         t0 = time.time()
-        with JsonlWriter(out_path) as w:
-            for q in tqdm(todo, desc=split):
-                if q["image"] != cached_name:  # POPE asks 6 questions per image in a row
-                    cached_name, cached_img = q["image"], load_image(q["image"])
-                answer = vlm.generate(cached_img, q["text"] + args.suffix,
-                                      max_new_tokens=config.POPE_MAX_NEW_TOKENS)
-                pred, fallback = parse_yes_no(answer)
-                rec = {**q, "prompt_suffix": args.suffix, "answer": answer, "pred": pred,
-                       "parse_fallback": fallback}
-                w.write(rec)
-                done[q["question_id"]] = rec
-        print(f"[{split}] {(time.time() - t0) / len(todo):.2f} s per question")
+        with JsonlWriter(out_path) as w, tqdm(total=len(todo), desc=split) as bar:
+            for i in range(0, len(todo), bs):    # batches in file order (POPE: 6 questions per image)
+                batch = todo[i:i + bs]
+                for q in batch:
+                    if q["image"] not in images:
+                        images[q["image"]] = load_image(q["image"])
+                imgs = [images[q["image"]] for q in batch]
+                prompts = [q["text"] + args.suffix for q in batch]
+                answers = vlm.generate_batch(imgs, prompts, max_new_tokens=config.POPE_MAX_NEW_TOKENS,
+                                             alpha=args.alpha, layers=args.layers)
+                sigs = vlm.decision_signals_batch(imgs, prompts) if signals else [{}] * len(batch)
+                for q, (answer, _), sig in zip(batch, answers, sigs):
+                    pred, fallback = parse_yes_no(answer)
+                    rec = {**q, "prompt_suffix": args.suffix, "answer": answer, "pred": pred,
+                           "parse_fallback": fallback, "alpha": args.alpha, "layers": args.layers,
+                           "batch_size": bs, **sig}
+                    w.write(rec)
+                    done[q["question_id"]] = rec
+                bar.update(len(batch))
+                if len(images) > 64:              # keep memory bounded
+                    images = {k: images[k] for k in list(images)[-8:]}
+        print(f"[{split}] {(time.time() - t0) / len(todo):.3f} s per question")
 
     selected = [done[q["question_id"]] for q in questions if q["question_id"] in done]
     m = pope_metrics(selected)
@@ -66,13 +79,23 @@ def main():
     ap.add_argument("--limit", type=int, default=None, help="fixed random subset of N questions per split")
     ap.add_argument("--tag", default="baseline", help="name of this method/setting (results subfolder)")
     ap.add_argument("--suffix", default=config.POPE_SUFFIX, help="text appended to each question")
+    ap.add_argument("--cautious", action="store_true", help="E5: use config.CAUTIOUS_SUFFIX as the suffix")
+    ap.add_argument("--alpha", type=float, default=0.0, help="E4: image-attention boost (0 = original model)")
+    ap.add_argument("--layers", default="none", help="E4: decoder layers to boost, e.g. 8-15, 0-27, none")
+    ap.add_argument("--selected", action="store_true", help="use alpha/layers from results/sweep/selected.json")
+    ap.add_argument("--signals", action="store_true", help="also record attention/confidence at the decision")
+    ap.add_argument("--batch-size", type=int, default=config.POPE_BATCH_SIZE)
     ap.add_argument("--dtype", default=config.DTYPE)
     ap.add_argument("--metrics-only", action="store_true", help="do not load the model; recompute metrics")
     args = ap.parse_args()
 
-    # Guard against mixing prompts inside one results folder.
-    if args.tag == "baseline" and args.suffix != config.POPE_SUFFIX:
-        raise SystemExit("Use a different --tag when changing --suffix, so results do not mix.")
+    if args.cautious:
+        args.suffix = config.CAUTIOUS_SUFFIX
+    if args.selected:
+        args.alpha, args.layers = selected_setting(config.RESULTS_DIR)
+    # Guard against mixing prompts / settings inside one results folder.
+    if args.tag == "baseline" and (args.suffix != config.POPE_SUFFIX or args.alpha != 0):
+        raise SystemExit("Use a different --tag when changing --suffix or --alpha, so results do not mix.")
 
     splits = list(config.POPE_SPLITS) if args.split == "all" else [args.split]
     out_dir = config.RESULTS_DIR / "pope" / args.tag
@@ -83,10 +106,10 @@ def main():
         from halluc.model import VLM
         vlm = VLM(dtype=args.dtype)
         save_json(run_metadata(args, model=config.MODEL_ID, max_pixels=config.MAX_PIXELS,
-                               min_pixels=config.MIN_PIXELS, decoding="greedy"),
+                               min_pixels=config.MIN_PIXELS, decoding="greedy", dtype_resolved=vlm.dtype),
                   out_dir / "run_meta.json")
 
-    rows = [evaluate_split(vlm, s, args, out_dir) for s in splits]
+    rows = [evaluate_split(vlm, s, args, out_dir, signals=args.signals) for s in splits]
 
     print(f"\nPOPE results  (tag={args.tag}, limit={args.limit})")
     print(f"{'split':<12}{'n':>6}{'acc':>8}{'prec':>8}{'rec':>8}{'f1':>8}{'yes%':>8}{'fallbk':>8}")

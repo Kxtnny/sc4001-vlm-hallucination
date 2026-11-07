@@ -13,3 +13,6 @@ __pycache__/
 # SLURM job logs (TC1)
 *.out
 *.err
+
+# Submission archive (built by scripts/make_submission_zip.py)
+SC4001_code.zip

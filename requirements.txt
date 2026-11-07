@@ -6,4 +6,5 @@ numpy
 pandas
 matplotlib
 scikit-learn           # AUROC for E3
+inflect                # singularising caption words for CHAIR (replaces the unmaintained pattern.en)
 pytest

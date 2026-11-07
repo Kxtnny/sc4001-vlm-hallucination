@@ -43,6 +43,16 @@ To compare with Colab, copy `~/sc4001/results/sanity/sanity_report_tesla-v100-*.
 `MyDrive/sc4001/results/sanity/` (next to the Colab `sanity_report_tesla-t4.json`), then run
 `!python scripts/compare_timing.py` in the notebook (or on your laptop with `SC4001_ROOT` set).
 
+## All experiments (E0-E6) in one job
+
+```bash
+cd ~/sc4001-vlm-hallucination && git pull
+sbatch tc1/run_all.sbatch          # runs scripts/run_all.sh; resubmit if it hits the 6 h limit (it resumes)
+```
+On the V100 the model runs in float32 (`DTYPE = "auto"`): the V100 has no native bfloat16 and float16
+overflows in this model. Copy `~/sc4001/results` to Drive afterwards. Keep all test-set numbers of one
+table from the same machine and precision.
+
 ## Troubleshooting
 
 | Symptom | Fix |

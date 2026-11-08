@@ -10,15 +10,18 @@ const FONT = "Arial";
 const PT = 20;               // 10 pt body (half-points)
 const CONTENT_W = 9638;      // A4 width 11906 - 2 x 1134 (2 cm margins), in DXA
 
-// Inline markup: **bold**, *italic*, `code` (rendered in Consolas), ^sup^ for superscript.
+// Inline markup: **bold**, *italic*, `code` (rendered in Consolas), ^sup^ for superscript,
+// [[word]] = hallucinated object (orange, bold), {{word}} = correctly mentioned object (blue).
 function runs(text, base = {}) {
   const out = [];
-  const re = /(\*\*[^*]+\*\*|\*[^*]+\*|`[^`]+`|\^[^^]+\^)/g;
+  const re = /(\[\[[^\]]+\]\]|\{\{[^}]+\}\}|\*\*[^*]+\*\*|\*[^*]+\*|`[^`]+`|\^[^^]+\^)/g;
   let last = 0, m;
   while ((m = re.exec(text)) !== null) {
     if (m.index > last) out.push(new TextRun({ text: text.slice(last, m.index), font: FONT, ...base }));
     const t = m[0];
-    if (t.startsWith("**")) out.push(new TextRun({ text: t.slice(2, -2), bold: true, font: FONT, ...base }));
+    if (t.startsWith("[[")) out.push(new TextRun({ text: t.slice(2, -2), bold: true, color: "C4501F", font: FONT, ...base }));
+    else if (t.startsWith("{{")) out.push(new TextRun({ text: t.slice(2, -2), color: "1F62B8", font: FONT, ...base }));
+    else if (t.startsWith("**")) out.push(new TextRun({ text: t.slice(2, -2), bold: true, font: FONT, ...base }));
     else if (t.startsWith("`")) out.push(new TextRun({ text: t.slice(1, -1), font: "Consolas", ...base, size: (base.size || PT) - 2 }));
     else if (t.startsWith("^")) out.push(new TextRun({ text: t.slice(1, -1), superScript: true, font: FONT, ...base }));
     else out.push(new TextRun({ text: t.slice(1, -1), italics: true, font: FONT, ...base }));

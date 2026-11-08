@@ -4,13 +4,13 @@ const { Tbl, Caption } = require("./lib");
 const pct = (x, d = 1) => (x === undefined || x === null ? "-" : (100 * x).toFixed(d));
 const f3 = (x) => (x === undefined || x === null ? "-" : x.toFixed(3));
 const pval = (p) => (p === undefined || p === null ? "-" : p < 0.001 ? "<0.001" : p.toFixed(3));
-const NAMES = { baseline: "Baseline", cautious: "Cautious prompt", intervention: "Attention boost" };
+const NAMES = { baseline: "Baseline", cautious: "Cautious prompt", intervention: "Attention boost", pai: "PAI-style boost" };
 
 function popeTable(N, caption) {
   const rows = [["Split", "Method", "Acc", "Prec", "Rec", "F1", "Yes %", "McNemar p"]];
   for (const split of ["random", "popular", "adversarial"]) {
     const s = (N.pope || {})[split] || {};
-    for (const tag of ["baseline", "cautious", "intervention"]) {
+    for (const tag of ["baseline", "cautious", "intervention", "pai"]) {
       const m = s[tag];
       if (!m) continue;
       rows.push([tag === "baseline" ? split : "", NAMES[tag], pct(m.accuracy), pct(m.precision), pct(m.recall),
@@ -22,7 +22,7 @@ function popeTable(N, caption) {
 
 function chairTable(N, caption) {
   const rows = [["Method", "CHAIR-s", "CHAIR-i", "Recall", "Words", "Objects/caption", "Truncated %"]];
-  for (const tag of ["baseline", "intervention"]) {
+  for (const tag of ["baseline", "intervention", "pai"]) {
     const m = (N.chair || {})[tag];
     if (!m) continue;
     rows.push([NAMES[tag], pct(m.chair_s), pct(m.chair_i), pct(m.recall), m.avg_len_words.toFixed(1),
@@ -31,7 +31,12 @@ function chairTable(N, caption) {
   const d = (N.chair || {}).intervention_minus_baseline;
   if (d) {
     const c = (k) => `${(100 * d[k].diff).toFixed(1)} [${(100 * d[k].ci[0]).toFixed(1)}, ${(100 * d[k].ci[1]).toFixed(1)}]`;
-    rows.push(["Difference (95% CI)", c("chair_s"), c("chair_i"), c("recall"), "", "", ""]);
+    rows.push(["Boost - baseline (95% CI)", c("chair_s"), c("chair_i"), c("recall"), "", "", ""]);
+  }
+  const dp = (N.chair || {}).pai_minus_baseline;
+  if (dp) {
+    const c = (k) => `${(100 * dp[k].diff).toFixed(1)} [${(100 * dp[k].ci[0]).toFixed(1)}, ${(100 * dp[k].ci[1]).toFixed(1)}]`;
+    rows.push(["PAI-style - baseline (95% CI)", c("chair_s"), c("chair_i"), c("recall"), "", "", ""]);
   }
   const lm = (N.chair || {}).length_matched;
   if (lm) {
@@ -44,10 +49,10 @@ function chairTable(N, caption) {
   return [Tbl(rows, [2500, 1450, 1450, 1450, 800, 1200, 1000], { boldRows: [] }), Caption(caption)];
 }
 
-function sweepTable(N, caption, maxRows = 99) {
-  const sw = N.sweep;
+function sweepTable(N, caption, maxRows = 99, key = null) {
+  const sw = key ? (N[key] || {}).table : N.sweep;
   if (!sw) return [];
-  const sel = N.selected || {};
+  const sel = (key ? (N[key] || {}).selected : N.selected) || {};
   const rows = [["alpha", "Layers", "POPE acc", "POPE F1", "Yes %", "CHAIR-s", "CHAIR-i", "Recall", "Words"]];
   for (const r of sw.rows.slice(0, maxRows)) {
     rows.push([r.alpha === 0 ? "0 (base)" : String(r.alpha), r.layers + (r.tag === sel.tag ? " *" : ""),

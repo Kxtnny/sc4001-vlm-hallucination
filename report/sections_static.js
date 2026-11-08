@@ -24,7 +24,7 @@ function introduction() {
       "dev/test separation; (ii) a layer-by-layer analysis of image attention at the moment each object word is " +
       "written, which controls for the position of the word and compares against the model's own token " +
       "confidence; (iii) a training-free, post-softmax image-attention boost whose strength and layers are " +
-      "chosen by a rule fixed before looking at test data; (iv) attention-based abstention compared with a " +
+      "chosen by a rule fixed before looking at test data, compared with PAI's attention step tuned under the same rule; (iv) attention-based abstention compared with a " +
       "confidence baseline; and (v) an analysis of the cases where the method fails. Most prior attention-based " +
       "work uses 7B-scale LLaVA-style models [3, 4, 5]; a 2B model with dynamic-resolution image tokens is a " +
       "different and cheaper regime. Well-supported negative results are reported as such.", { after: 60 }),
@@ -59,7 +59,8 @@ function review() {
       "renormalised. It uses no image-free pass and no contrastive logits, so any effect can be attributed to " +
       "attention alone, and alpha = 0 reproduces the original model exactly. We apply it to Qwen2-VL-2B, whose " +
       "number of image tokens depends on the image (here 64 to 256) and whose layers are chosen on a dev set from " +
-      "our own attention analysis. Finally, rather than only intervening, we ask whether the same attention " +
+      "our own attention analysis. To compare with PAI, we also re-implement its attention step without the " +
+      "image-free pass and tune it with the same dev protocol (Section 3.4). Finally, rather than only intervening, we ask whether the same attention " +
       "signal can tell the model *when to abstain*, and compare it with the simplest alternative, the model's " +
       "own answer confidence.", { after: 60 }),
   ];
@@ -118,6 +119,15 @@ function methods(N) {
       "The **selection rule was fixed before the sweep**: among settings whose dev recall drops by at most 2 " +
       "points and dev POPE F1 by at most 1 point, take the lowest dev CHAIR-i; if none qualifies, take the lowest " +
       "dev CHAIR-i overall and report that the criteria were not met."),
+    P("**PAI-style comparison (E4b).** To compare with a published method, we also implement PAI's attention " +
+      "step [5]: before the softmax, each image key's logit z becomes z + alpha|z|, only in the row of the token " +
+      "being generated. PAI also contrasts the output with an image-free forward pass; we omit that step, so the " +
+      "comparison is between the two ways of moving attention onto the image. Its grid is alpha in {0.05, 0.1, " +
+      "0.2, 0.5} on all layers except the first two (2-27) or on layers 6-13. Larger alpha is not useful on this " +
+      "model: at alpha = 0.5 on layers 2-27, dev captions shrink to 24 words, and in a smoke test they turned into " +
+      "lists of bounding-box coordinates. The setting is chosen on dev with the same rule as above, and each test set " +
+      "is then run once. Two unit tests check that only the last query row changes and that batched rows match " +
+      "rows run alone."),
     H2("3.5 Comparison baseline and abstention (E5)"),
     P("As a simple comparison we use a cautious POPE prompt (\" Answer yes only if the object is clearly visible in " +
       "the image, otherwise answer no.\"), fixed before any test run. For abstention, an extra forward pass records " +

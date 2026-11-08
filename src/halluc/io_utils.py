@@ -116,9 +116,9 @@ def run_metadata(args=None, **extra):
     return meta
 
 
-def selected_setting(results_dir):
-    """(alpha, layers) of the E4 intervention chosen on the dev set by scripts/sweep.py."""
-    path = Path(results_dir) / "sweep" / "selected.json"
+def selected_setting(results_dir, name="sweep"):
+    """(alpha, layers) chosen on the dev set by scripts/sweep.py (results/<name>/selected.json)."""
+    path = Path(results_dir) / name / "selected.json"
     if not path.exists():
         raise SystemExit(f"{path} not found: run scripts/sweep.py (dev set) first.")
     sel = load_json(path)

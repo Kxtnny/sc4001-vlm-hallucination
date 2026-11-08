@@ -80,7 +80,7 @@ def run_captions(vlm, split, tag, limit=None, alpha=0.0, layers="none",
     if todo and vlm is not None:
         save_json(run_metadata(run_args, model=config.MODEL_ID, max_pixels=config.MAX_PIXELS,
                                min_pixels=config.MIN_PIXELS, decoding="greedy", prompt=config.CAPTION_PROMPT,
-                               alpha=alpha, layers=layers, max_new_tokens=max_new_tokens,
+                               alpha=alpha, layers=layers, boost_mode=vlm.boost_mode, max_new_tokens=max_new_tokens,
                                batch_size=batch_size, dtype_resolved=vlm.dtype),
                   out_dir / f"run_meta_{split}.json")
         t0 = time.time()
@@ -92,7 +92,8 @@ def run_captions(vlm, split, tag, limit=None, alpha=0.0, layers="none",
                 for im, (caption, new_ids) in zip(batch, outs):
                     rec = {"image": im, "caption": caption, "token_ids": new_ids, "n_new_tokens": len(new_ids),
                            "hit_max_tokens": len(new_ids) >= max_new_tokens and new_ids[-1] not in vlm.eos_ids,
-                           "alpha": alpha, "layers": layers, "prompt": config.CAPTION_PROMPT,
+                           "alpha": alpha, "layers": layers, "boost_mode": vlm.boost_mode,
+                           "prompt": config.CAPTION_PROMPT,
                            "batch_size": batch_size}
                     w.write(rec)
                     done[im] = rec
@@ -127,7 +128,10 @@ def main():
     ap.add_argument("--tag", default="baseline")
     ap.add_argument("--alpha", type=float, default=0.0, help="E4: image-attention boost (0 = original model)")
     ap.add_argument("--layers", default="none", help="E4: decoder layers to boost, e.g. 8-15, 0-27, none")
-    ap.add_argument("--selected", action="store_true", help="use alpha/layers from results/sweep/selected.json")
+    ap.add_argument("--selected", action="store_true", help="use alpha/layers from results/<selected-from>/selected.json")
+    ap.add_argument("--selected-from", default="sweep", help="sweep folder for --selected (sweep | sweep_pai)")
+    ap.add_argument("--mode", default="post", choices=["post", "pai"],
+                    help="boost type: post-softmax (ours) or PAI-style pre-softmax logit amplification")
     ap.add_argument("--max-new-tokens", type=int, default=config.CAPTION_MAX_NEW_TOKENS)
     ap.add_argument("--batch-size", type=int, default=config.CAPTION_BATCH_SIZE)
     ap.add_argument("--dtype", default=config.DTYPE)
@@ -136,7 +140,7 @@ def main():
     args = ap.parse_args()
 
     if args.selected:
-        args.alpha, args.layers = selected_setting(config.RESULTS_DIR)
+        args.alpha, args.layers = selected_setting(config.RESULTS_DIR, args.selected_from)
     if args.tag == "baseline" and args.alpha != 0:
         raise SystemExit("Use a different --tag for intervention runs, so results do not mix.")
     if args.split not in ("chair_test", "dev"):
@@ -146,6 +150,7 @@ def main():
     if not args.metrics_only:
         from halluc.model import VLM
         vlm = VLM(dtype=args.dtype)
+        vlm.boost_mode = args.mode
     _, scored = run_captions(vlm, args.split, args.tag, args.limit, args.alpha, args.layers,
                              args.max_new_tokens, run_args=args, batch_size=args.batch_size)
     for s in scored[:args.show]:

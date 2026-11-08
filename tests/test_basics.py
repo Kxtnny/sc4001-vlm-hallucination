@@ -263,3 +263,49 @@ def test_boost_batched_rows_match_single_rows():
         with boosted(boost, 2.0, [0, 1], batch["input_ids"] == cfg.image_token_id):
             both = model(**batch).logits
     assert torch.allclose(both[0, -1], single, atol=1e-4)
+
+
+def test_pai_mode_changes_only_the_last_query_and_raises_image_share():
+    """PAI-style mode: pre-softmax z + alpha|z| on image keys, last query position only."""
+    torch, model, cfg, inputs = _tiny_model_and_inputs()
+    from halluc.model import boosted, check_image_tokens, image_token_mask, install_boost
+    boost = install_boost()
+    check_image_tokens(inputs["input_ids"], inputs["image_grid_thw"], cfg)
+    mask = image_token_mask(inputs["input_ids"], cfg.image_token_id)
+    with torch.no_grad():
+        ref = model(**inputs, output_attentions=True)
+        with boosted(boost, 0.0, [0, 1, 2], mask, mode="pai"):
+            same = model(**inputs, output_attentions=True)
+        calls = boost.calls
+        with boosted(boost, 1.0, [0], mask, mode="pai"):
+            pai = model(**inputs, output_attentions=True)
+        assert boost.calls == calls + 1 and boost.mode == "post"    # switched back afterwards
+    assert torch.equal(ref.logits, same.logits)
+    a0, b0 = ref.attentions[0][0].float(), pai.attentions[0][0].float()   # layer 0: [heads, Q, K]
+    assert torch.allclose(a0[:, :-1], b0[:, :-1])                         # every earlier row untouched
+    assert torch.allclose(b0.sum(-1), torch.ones_like(b0.sum(-1)), atol=1e-5)
+    assert torch.all(b0[:, -1][..., mask].sum(-1) >= a0[:, -1][..., mask].sum(-1) - 1e-6)
+    assert not torch.allclose(a0[:, -1], b0[:, -1])
+
+
+def test_pai_mode_batched_rows_match_single_rows():
+    torch, model, cfg, inputs = _tiny_model_and_inputs()
+    from halluc.model import boosted, image_token_mask, install_boost
+    boost = install_boost()
+    ids = inputs["input_ids"]
+    pad = torch.tensor([[0, 0, 0]])
+    ids2 = torch.cat([pad, ids[:, :-3]], dim=1)
+    ids2[0, 3] = 9
+    batch = dict(inputs)
+    batch["input_ids"] = torch.cat([ids, ids2])
+    batch["attention_mask"] = torch.cat([torch.ones_like(ids), torch.cat([torch.zeros_like(pad),
+                                                                         torch.ones_like(ids[:, :-3])], 1)])
+    batch["mm_token_type_ids"] = (batch["input_ids"] == cfg.image_token_id).long()
+    batch["pixel_values"] = torch.cat([inputs["pixel_values"]] * 2)
+    batch["image_grid_thw"] = torch.cat([inputs["image_grid_thw"]] * 2)
+    with torch.no_grad():
+        with boosted(boost, 0.5, [0, 1, 2], image_token_mask(ids, cfg.image_token_id), mode="pai"):
+            single = model(**inputs).logits[0, -1]
+        with boosted(boost, 0.5, [0, 1, 2], batch["input_ids"] == cfg.image_token_id, mode="pai"):
+            both = model(**batch).logits
+    assert torch.allclose(both[0, -1], single, atol=1e-4)

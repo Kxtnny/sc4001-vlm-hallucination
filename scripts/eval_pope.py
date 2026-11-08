@@ -58,6 +58,7 @@ def evaluate_split(vlm, split, args, out_dir, signals=False):
                     pred, fallback = parse_yes_no(answer)
                     rec = {**q, "prompt_suffix": args.suffix, "answer": answer, "pred": pred,
                            "parse_fallback": fallback, "alpha": args.alpha, "layers": args.layers,
+                           "boost_mode": getattr(vlm, "boost_mode", "post"),
                            "batch_size": bs, **sig}
                     w.write(rec)
                     done[q["question_id"]] = rec
@@ -82,7 +83,10 @@ def main():
     ap.add_argument("--cautious", action="store_true", help="E5: use config.CAUTIOUS_SUFFIX as the suffix")
     ap.add_argument("--alpha", type=float, default=0.0, help="E4: image-attention boost (0 = original model)")
     ap.add_argument("--layers", default="none", help="E4: decoder layers to boost, e.g. 8-15, 0-27, none")
-    ap.add_argument("--selected", action="store_true", help="use alpha/layers from results/sweep/selected.json")
+    ap.add_argument("--selected", action="store_true", help="use alpha/layers from results/<selected-from>/selected.json")
+    ap.add_argument("--selected-from", default="sweep", help="sweep folder for --selected (sweep | sweep_pai)")
+    ap.add_argument("--mode", default="post", choices=["post", "pai"],
+                    help="boost type: post-softmax (ours) or PAI-style pre-softmax logit amplification")
     ap.add_argument("--signals", action="store_true", help="also record attention/confidence at the decision")
     ap.add_argument("--batch-size", type=int, default=config.POPE_BATCH_SIZE)
     ap.add_argument("--dtype", default=config.DTYPE)
@@ -92,7 +96,7 @@ def main():
     if args.cautious:
         args.suffix = config.CAUTIOUS_SUFFIX
     if args.selected:
-        args.alpha, args.layers = selected_setting(config.RESULTS_DIR)
+        args.alpha, args.layers = selected_setting(config.RESULTS_DIR, args.selected_from)
     # Guard against mixing prompts / settings inside one results folder.
     if args.tag == "baseline" and (args.suffix != config.POPE_SUFFIX or args.alpha != 0):
         raise SystemExit("Use a different --tag when changing --suffix or --alpha, so results do not mix.")
@@ -105,6 +109,7 @@ def main():
     if not args.metrics_only:
         from halluc.model import VLM
         vlm = VLM(dtype=args.dtype)
+        vlm.boost_mode = args.mode
         save_json(run_metadata(args, model=config.MODEL_ID, max_pixels=config.MAX_PIXELS,
                                min_pixels=config.MIN_PIXELS, decoding="greedy", dtype_resolved=vlm.dtype),
                   out_dir / "run_meta.json")

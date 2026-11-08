@@ -20,7 +20,7 @@ def read_jsonl(path):
     if not path.exists():
         return []
     rows = []
-    with open(path) as f:
+    with open(path, encoding="utf-8") as f:
         for line in f:
             line = line.strip()
             if not line:
@@ -38,7 +38,7 @@ class JsonlWriter:
     def __init__(self, path):
         self.path = Path(path)
         self.path.parent.mkdir(parents=True, exist_ok=True)
-        self.f = open(self.path, "a")
+        self.f = open(self.path, "a", encoding="utf-8")
 
     def write(self, record):
         self.f.write(json.dumps(record) + "\n")
@@ -59,13 +59,24 @@ def save_json(obj, path):
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_suffix(path.suffix + ".tmp")
-    with open(tmp, "w") as f:
+    with open(tmp, "w", encoding="utf-8") as f:
         json.dump(obj, f, indent=2)
     os.replace(tmp, path)  # atomic: never leaves a half-written JSON
 
 
+def write_jsonl(rows, path):
+    """Write a whole JSONL file at once (atomic), for derived files that are recomputed."""
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_suffix(path.suffix + ".tmp")
+    with open(tmp, "w", encoding="utf-8") as f:
+        for r in rows:
+            f.write(json.dumps(r) + "\n")
+    os.replace(tmp, path)
+
+
 def load_json(path):
-    with open(path) as f:
+    with open(path, encoding="utf-8") as f:
         return json.load(f)
 
 
@@ -103,3 +114,12 @@ def run_metadata(args=None, **extra):
         meta["args"] = {k: str(v) for k, v in vars(args).items()}
     meta.update(extra)
     return meta
+
+
+def selected_setting(results_dir):
+    """(alpha, layers) of the E4 intervention chosen on the dev set by scripts/sweep.py."""
+    path = Path(results_dir) / "sweep" / "selected.json"
+    if not path.exists():
+        raise SystemExit(f"{path} not found: run scripts/sweep.py (dev set) first.")
+    sel = load_json(path)
+    return float(sel["alpha"]), sel["layers"]

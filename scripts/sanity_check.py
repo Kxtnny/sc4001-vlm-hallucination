@@ -190,7 +190,7 @@ def main():
     # ---- speed benchmark (same inputs on every machine) -----------------------
     print(f"\nSpeed benchmark: {args.timing_questions} POPE questions + {args.timing_captions} captions ...")
     timing = benchmark(vlm, args.timing_questions, args.timing_captions)
-    timing.update(model_load_s=load_model_s, gpu=gpu, host=host_label(), dtype=args.dtype,
+    timing.update(model_load_s=load_model_s, gpu=gpu, host=host_label(), dtype=vlm.dtype,
                   cpus=int(os.environ.get("SLURM_CPUS_PER_TASK", os.cpu_count() or 0)))
     print(f"  image load      {timing['image_load_s_mean']:.3f} s per image (disk / Drive)")
     print(f"  POPE question   {timing['pope_s_per_question_mean']:.3f} s mean, "

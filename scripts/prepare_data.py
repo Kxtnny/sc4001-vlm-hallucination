@@ -10,7 +10,8 @@ What it does:
        dev         - 200 other images for choosing alpha/layers/prompts -> DEV
   4. Writes dev POPE-style questions (random-negative protocol) so the
      intervention can also be tuned on yes/no questions without touching POPE.
-  5. Downloads only the ~1,200 images we need (not the 6 GB val2014 zip).
+  5. Downloads the CHAIR synonym list from the original CHAIR repository.
+  6. Downloads only the ~1,200 images we need (not the 6 GB val2014 zip).
 
 Splits are never overwritten unless you pass --force-splits. That is on purpose:
 changing them after you have tuned anything would leak test data into dev.
@@ -73,6 +74,13 @@ def get_annotations():
     print("Saved", needed, "to", config.ANNOT_DIR)
 
 
+def get_chair_synonyms():
+    dest = config.CHAIR_DIR / "synonyms.txt"
+    download(config.CHAIR_SYNONYMS_URL, dest)
+    n = sum(1 for ln in dest.read_text(encoding="utf-8").splitlines() if ln.strip())
+    print(f"CHAIR synonyms: {n} categories -> {dest}")
+
+
 def build_splits(instances, force):
     out = {name: config.SPLIT_DIR / f"{name}_images.json" for name in ("pope", "dev", "chair_test")}
     if all(p.exists() for p in out.values()) and not force:
@@ -129,7 +137,7 @@ def build_dev_questions(instances, dev_files, per_image=3):
             rows.append({"question_id": qid, "image": fn,
                          "text": f"Is there a {name} in the image?", "label": label})
     dest.parent.mkdir(parents=True, exist_ok=True)
-    with open(dest, "w") as f:
+    with open(dest, "w", encoding="utf-8") as f:
         for r in rows:
             f.write(json.dumps(r) + "\n")
     print(f"Dev questions: {len(rows)} ({sum(r['label'] == 'yes' for r in rows)} yes) -> {dest}")
@@ -164,6 +172,7 @@ def main():
 
     get_pope()
     get_annotations()
+    get_chair_synonyms()
     instances = load_json(config.ANNOT_DIR / "instances_val2014.json")
     splits = build_splits(instances, args.force_splits)
     build_dev_questions(instances, splits["dev"]["images"])

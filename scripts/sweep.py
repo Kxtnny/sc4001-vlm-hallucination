@@ -30,8 +30,10 @@ RECALL_TOL = 0.02   # absolute drop in dev object recall we accept
 F1_TOL = 0.01       # absolute drop in dev POPE F1 we accept
 
 
-def tag_for(alpha, layers):
-    return "baseline" if alpha == 0 else f"sweep_a{alpha:g}_L{layers}"
+def tag_for(alpha, layers, mode="post"):
+    if alpha == 0:
+        return "baseline"
+    return f"{'sweep' if mode == 'post' else 'pai'}_a{alpha:g}_L{layers}"
 
 
 class _Args:
@@ -43,8 +45,8 @@ class _Args:
         self.batch_size = config.POPE_BATCH_SIZE
 
 
-def run_setting(vlm, alpha, layers, n_caption_images, scorer, pope_limit=None):
-    tag = tag_for(alpha, layers)
+def run_setting(vlm, alpha, layers, n_caption_images, scorer, pope_limit=None, mode="post"):
+    tag = tag_for(alpha, layers, mode)
     out_dir = config.RESULTS_DIR / "pope" / tag
     out_dir.mkdir(parents=True, exist_ok=True)
     # The reference run also records the decision signals (used by E5 abstention).
@@ -80,6 +82,10 @@ def main():
     ap.add_argument("--no-e3-band", action="store_true", help="do not add the layer band chosen in E3")
     ap.add_argument("--table-only", action="store_true", help="no model: rebuild table from saved results")
     ap.add_argument("--dtype", default=config.DTYPE)
+    ap.add_argument("--mode", default="post", choices=["post", "pai"],
+                    help="post = our post-softmax boost; pai = PAI-style pre-softmax logit amplification")
+    ap.add_argument("--out-name", default="sweep",
+                    help="results/<out-name>/ for the table and selection (sweep = the frozen E4 choice)")
     args = ap.parse_args()
 
     layer_ranges = list(args.layers)
@@ -95,15 +101,16 @@ def main():
     if not args.table_only:
         from halluc.model import VLM
         vlm = VLM(dtype=args.dtype)
+        vlm.boost_mode = args.mode
     scorer = load_chair_scorer()
     rows = []
     for alpha, layers in grid:
         print(f"\n=== alpha={alpha} layers={layers} ===")
-        rows.append(run_setting(vlm, alpha, layers, args.n_caption_images, scorer, args.pope_limit))
+        rows.append(run_setting(vlm, alpha, layers, args.n_caption_images, scorer, args.pope_limit, args.mode))
 
     sel = select(rows)
-    out = config.RESULTS_DIR / "sweep"
-    save_json({"rows": rows, "recall_tol": RECALL_TOL, "f1_tol": F1_TOL,
+    out = config.RESULTS_DIR / args.out_name
+    save_json({"rows": rows, "recall_tol": RECALL_TOL, "f1_tol": F1_TOL, "mode": args.mode,
                "n_caption_images": args.n_caption_images, "split": "dev"}, out / "sweep_table.json")
     if all(r["complete"] for r in rows):
         save_json(sel, out / "selected.json")
@@ -120,7 +127,8 @@ def main():
 
     from halluc.plots import plot_sweep
     base = rows[0]
-    plot_sweep([r for r in rows if r["alpha"] != 0], base, config.FIGURE_DIR / "e4_sweep_dev.png")
+    fig_name = "e4_sweep_dev.png" if args.out_name == "sweep" else f"e4_{args.out_name}_dev.png"
+    plot_sweep([r for r in rows if r["alpha"] != 0], base, config.FIGURE_DIR / fig_name)
 
 
 if __name__ == "__main__":

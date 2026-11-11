@@ -92,6 +92,10 @@ class ImageAttentionBoost:
     Works for a left-padded batch: `img_mask` [batch, prompt_len] marks each row's image
     tokens. Keys beyond the prompt (generated tokens) are never image tokens.
 
+    mode = "pai" instead applies the logit amplification of PAI (Liu et al., ECCV 2024) *before* the
+    softmax, to the last query position only (the token being generated), as in PAI's code:
+        z'_qk = z_qk + alpha * |z_qk|   for image keys k   (without PAI's image-free contrast term)
+
     Usage: the VLM wrapper installs one instance as Qwen2-VL's eager attention function;
     the `boosted` context manager switches it on for one input and off afterwards. With
     alpha = 0 the original function runs unchanged, so outputs are bit-identical.
@@ -101,7 +105,7 @@ class ImageAttentionBoost:
         self.original_fn = original_fn
         self.attention_cls = attention_cls
         self.repeat_kv = repeat_kv
-        self.alpha, self.layers = 0.0, frozenset()
+        self.alpha, self.layers, self.mode = 0.0, frozenset(), "post"
         self.img_mask = self.img_end = None
         self.calls = 0   # number of boosted attention calls (lets tests check it really ran)
 
@@ -118,7 +122,6 @@ class ImageAttentionBoost:
         attn = torch.matmul(query, key_states.transpose(2, 3)) * scaling
         if attention_mask is not None:
             attn = attn + attention_mask[:, :, :, : key_states.shape[-2]]
-        attn = torch.nn.functional.softmax(attn, dim=-1, dtype=torch.float32)
 
         bsz, _, q_len, k_len = attn.shape
         img = self.img_mask.to(attn.device)
@@ -127,6 +130,18 @@ class ImageAttentionBoost:
         key_img[:, :img.shape[1]] = img
         q_pos = torch.arange(k_len - q_len, k_len, device=attn.device)            # absolute query positions
         rows = q_pos[None, :] > self.img_end.to(attn.device)[:, None]             # [batch, Q] after the image
+
+        if self.mode == "pai":
+            # Pre-softmax: amplify the image-key logits of the last query (the token being predicted).
+            last = rows & (q_pos == k_len - 1)[None, :]
+            sel = last[:, None, :, None] & key_img[:, None, None, :]               # [batch, 1, Q, K]
+            if bool(sel.any()):
+                attn = torch.where(sel, attn + self.alpha * attn.abs(), attn)
+                self.calls += 1
+            attn = torch.nn.functional.softmax(attn, dim=-1, dtype=torch.float32)
+            rows = torch.zeros_like(rows)                                           # no post-softmax step
+        else:
+            attn = torch.nn.functional.softmax(attn, dim=-1, dtype=torch.float32)
         if rows.any():
             scale = 1.0 + self.alpha * key_img.to(attn.dtype)                      # [batch, K]
             boosted = attn * scale[:, None, None, :]
@@ -159,8 +174,9 @@ class boosted:
     img_mask: bool [batch, prompt_len] (or [prompt_len]) marking image tokens.
     """
 
-    def __init__(self, boost, alpha, layers, img_mask):
-        self.boost, self.alpha, self.layers = boost, float(alpha), frozenset(layers)
+    def __init__(self, boost, alpha, layers, img_mask, mode="post"):
+        assert mode in ("post", "pai"), mode
+        self.boost, self.alpha, self.layers, self.mode = boost, float(alpha), frozenset(layers), mode
         self.img_mask = None if img_mask is None else img_mask.reshape(-1, img_mask.shape[-1])
 
     def __enter__(self):
@@ -170,11 +186,11 @@ class boosted:
             self.boost.img_mask = m
             self.boost.img_end = torch.where(m, pos, -1).max(dim=1).values      # last image position per row
             assert bool((self.boost.img_end >= 0).all()), "a row has no image tokens"
-            self.boost.alpha, self.boost.layers = self.alpha, self.layers
+            self.boost.alpha, self.boost.layers, self.boost.mode = self.alpha, self.layers, self.mode
         return self.boost
 
     def __exit__(self, *exc):
-        self.boost.alpha, self.boost.layers = 0.0, frozenset()
+        self.boost.alpha, self.boost.layers, self.boost.mode = 0.0, frozenset(), "post"
         self.boost.img_mask = self.boost.img_end = None
 
 
@@ -214,6 +230,7 @@ class VLM:
         self.merge_size = getattr(self.processor.image_processor, "merge_size", 2)
         self.num_layers = self.cfg.text_config.num_hidden_layers
         self.boost = install_boost()
+        self.boost_mode = "post"   # "post" (our post-softmax boost) or "pai" (PAI-style logit amplification)
         tok = self.processor.tokenizer
         # First token of each answer word, for P(yes) / P(no) at the decision position.
         self.yes_ids = sorted({tok.encode(w, add_special_tokens=False)[0] for w in ("Yes", "yes", " Yes", " yes")})
@@ -233,7 +250,7 @@ class VLM:
         """Context manager that applies the E4 intervention to this input (no-op if alpha = 0)."""
         layer_list = parse_layers(layers, self.num_layers)
         mask = self._image_mask(inputs) if alpha != 0 and layer_list else None
-        return boosted(self.boost, alpha, layer_list, mask)
+        return boosted(self.boost, alpha, layer_list, mask, mode=self.boost_mode)
 
     def build_inputs(self, image, prompt):
         """Chat-format one image + one text prompt and return model inputs on the GPU."""

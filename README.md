@@ -109,6 +109,7 @@ otherwise every run creates merge conflicts.
 | `scripts/failure_cases.py` | E6 failure cases: where the intervention hurts or still hallucinates |
 | `scripts/make_report.py` | All report tables (`results/report/tables.md`), significance tests, summary figure |
 | `scripts/run_all.sh` | Runs E0-E6 + report in the right order (resumable) |
+| `scripts/run_extra.sh` | Follow-ups: PAI-style comparison (dev sweep + one test run) and the 200-caption robustness sweep (dev only) |
 | `scripts/make_submission_zip.py` | Builds `SC4001_code.zip` (code, report, saved results; no data or weights) |
 | `scripts/compare_timing.py` | Compares E0 speed reports from different machines |
 | `tc1/` | SLURM job scripts and setup notes for the CCDS TC1 cluster |
@@ -159,6 +160,7 @@ python scripts/eval_pope.py --split all --tag cautious --cautious               
 python scripts/abstention.py                                  # E5 (Fig. accuracy vs coverage, Table E5)
 python scripts/failure_cases.py                               # E6 (Fig. failure cases, failure_cases.md)
 python scripts/make_report.py                                 # all tables -> results/report/tables.md
+bash scripts/run_extra.sh                                     # follow-ups (about 5 h): PAI-style comparison, 200-caption sweep
 python scripts/analyze_attention.py --split dev --plot-only   # (redraw an E3 figure from saved JSON, seconds)
 python scripts/make_submission_zip.py                         # SC4001_code.zip for NTULearn
 python -m pytest -q tests                                     # unit tests (CPU, ~40 s)
@@ -196,6 +198,11 @@ During generation, in the chosen decoder layers, every attention row whose query
 is rescaled: weights on image tokens are multiplied by (1 + alpha) and the row is renormalised to sum
 to 1 (`ImageAttentionBoost` in `src/halluc/model.py`). This is a post-softmax variant of the idea in
 PAI (Liu et al., ECCV 2024); alpha = 0 reproduces the original model exactly (unit-tested).
+
+For comparison, `--mode pai` (in `sweep.py`, `eval_pope.py`, `caption_chair.py`) applies PAI's own
+attention step instead: before the softmax, the image-key logits of the token being generated become
+z + alpha |z| (PAI's image-free contrastive term is not used). Its alpha and layers are chosen on dev
+with the same rule (`results/sweep_pai/selected.json`).
 
 ## Acknowledgements
 Qwen2-VL-2B-Instruct (Alibaba Qwen team) via Hugging Face Transformers; POPE question files from

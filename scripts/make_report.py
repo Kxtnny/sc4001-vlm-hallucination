@@ -23,8 +23,13 @@ from halluc.io_utils import load_json, read_jsonl, save_json
 
 R = config.RESULTS_DIR
 OUT = R / "report"
-METHODS_POPE = [("baseline", "Baseline"), ("cautious", "Cautious prompt"), ("intervention", "Image-attention boost")]
-METHODS_CHAIR = [("baseline", "Baseline"), ("intervention", "Image-attention boost")]
+METHODS_POPE = [("baseline", "Baseline"), ("cautious", "Cautious prompt"), ("intervention", "Image-attention boost"),
+                ("pai", "PAI-style logit boost")]
+METHODS_CHAIR = [("baseline", "Baseline"), ("intervention", "Image-attention boost"), ("pai", "PAI-style logit boost")]
+# Qualitative example for the report (Figure: the length effect). Chosen by hand among the test images where
+# every baseline hallucination comes after the last word of the boosted caption and the boosted caption has
+# none (the count of such images is computed below); this one is a genuine hallucination, not a CHAIR artefact.
+QUAL_IMAGE = "COCO_val2014_000000064313.jpg"
 
 
 def maybe(path):
@@ -92,6 +97,46 @@ def length_matched(base, other):
     return {"baseline": metrics(b), "intervention": metrics(o), "intervention_minus_baseline": diff, "n_images": n}
 
 
+def hyphen_adjacent(scored):
+    """Mentions whose word touches a hyphen ("man-made" -> man). Our tokeniser splits on hyphens, the original
+    CHAIR (NLTK word_tokenize) does not; this measures how much that deviation matters."""
+    n = h = 0
+    for r in scored.values():
+        c = r["caption"]
+        for m in r["mentions"]:
+            if (m["start"] > 0 and c[m["start"] - 1] == "-") or (m["end"] < len(c) and c[m["end"]] == "-"):
+                n += 1
+                h += m["hallucinated"]
+    tot = sum(r["n_mentions"] for r in scored.values())
+    th = sum(r["n_hallucinated"] for r in scored.values())
+    return {"n_mentions": tot, "n_hallucinated": th, "hyphen_mentions": n, "hyphen_hallucinated": h,
+            "chair_i": th / tot, "chair_i_without_hyphen": (th - h) / (tot - n)}
+
+
+def qualitative(base, other):
+    """The length-effect example: both captions with their mentions, plus how many images qualify."""
+    def n_before(r, m):
+        return len(r["caption"][:m["start"]].split())
+    qualify = [im for im in set(base) & set(other)
+               if other[im]["n_hallucinated"] == 0 and base[im]["n_hallucinated"] > 0
+               and all(n_before(base[im], m) >= len(other[im]["caption"].split())
+                       for m in base[im]["mentions"] if m["hallucinated"])]
+    assert QUAL_IMAGE in qualify, "the qualitative example no longer meets its criteria"
+    pack = lambda r: {"caption": r["caption"], "n_words": len(r["caption"].split()), "gt_nodes": r["gt_nodes"],
+                      "mentions": [{k: m[k] for k in ("word", "node", "start", "end", "hallucinated")}
+                                   for m in r["mentions"]]}
+    return {"image": QUAL_IMAGE, "n_qualifying_images": len(qualify), "baseline": pack(base[QUAL_IMAGE]),
+            "intervention": pack(other[QUAL_IMAGE])}
+
+
+def save_example_image(name, path, width=640):
+    from PIL import Image
+    img = Image.open(config.IMAGE_DIR / name).convert("RGB")
+    img.thumbnail((width, width))
+    path.parent.mkdir(parents=True, exist_ok=True)
+    img.save(path)
+
+
 def fmt(x, d=3):
     return "-" if x is None else f"{x:.{d}f}"
 
@@ -154,13 +199,41 @@ def main():
                          for k, v in diff.items())]
         lm = length_matched(base_scored, other)
         numbers["chair"]["length_matched"] = lm
+        numbers["chair"]["hyphen_deviation"] = {"baseline": hyphen_adjacent(base_scored),
+                                                "intervention": hyphen_adjacent(other)}
+        numbers["qualitative"] = qualitative(base_scored, other)
+        if config.IMAGE_DIR.exists():
+            save_example_image(QUAL_IMAGE, config.FIGURE_DIR / "qualitative_example.png")
         md += ["", "Length-matched control (each pair of captions cut to the shorter one's word count): " +
                f"baseline CHAIR-s {pct(lm['baseline']['chair_s'])}, CHAIR-i {pct(lm['baseline']['chair_i'])}, "
                f"recall {pct(lm['baseline']['recall'])}; intervention CHAIR-s {pct(lm['intervention']['chair_s'])}, "
                f"CHAIR-i {pct(lm['intervention']['chair_i'])}, recall {pct(lm['intervention']['recall'])}; difference " +
                "; ".join(f"{k} {100 * v['diff']:+.1f} [{100 * v['ci'][0]:+.1f}, {100 * v['ci'][1]:+.1f}]"
                          for k, v in lm["intervention_minus_baseline"].items())]
+    pai = {r["image"]: r for r in read_jsonl(R / "chair" / "pai" / "chair_test_scored.jsonl")}
+    if base_scored and len(pai) == len(base_scored):
+        diff, n = paired_bootstrap_chair(base_scored, pai)
+        numbers["chair"]["pai_minus_baseline"] = {**diff, "n_images": n}
+        numbers["chair"]["pai_length_matched"] = length_matched(base_scored, pai)
+        md += ["", "PAI-style - baseline (paired bootstrap, 95% CI, points): " +
+               "; ".join(f"{k} {100 * v['diff']:+.1f} [{100 * v['ci'][0]:+.1f}, {100 * v['ci'][1]:+.1f}]"
+                         for k, v in diff.items()) + ". Length-matched: " +
+               "; ".join(f"{k} {100 * v['diff']:+.1f} [{100 * v['ci'][0]:+.1f}, {100 * v['ci'][1]:+.1f}]"
+                         for k, v in numbers["chair"]["pai_length_matched"]["intervention_minus_baseline"].items())]
     md.append("")
+
+    # ---------------- E4b PAI-style sweep and E4 robustness sweep (dev) ----------------
+    for name in ("sweep_pai", "sweep_n200"):
+        t, s = maybe(R / name / "sweep_table.json"), maybe(R / name / "selected.json")
+        if t:
+            numbers[name] = {"table": t, "selected": s}
+            md += [f"## Dev sweep `{name}` ({t['n_caption_images']} dev captions, mode {t.get('mode', 'post')})", "",
+                   "| alpha | layers | POPE F1 | CHAIR-s | CHAIR-i | Recall | Words |", "|---|---|---|---|---|---|---|"]
+            for r in t["rows"]:
+                star = " **(selected)**" if s and r["tag"] == s["tag"] else ""
+                md.append(f"| {r['alpha']:g} | {r['layers']}{star} | {pct(r['pope_f1'])} | {pct(r['chair_s'])} | "
+                          f"{pct(r['chair_i'])} | {pct(r['recall'])} | {r['avg_len_words']:.1f} |")
+            md.append("")
 
     # ---------------- E4 sweep (dev) ----------------
     sweep = maybe(R / "sweep" / "sweep_table.json")

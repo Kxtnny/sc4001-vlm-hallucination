@@ -138,17 +138,19 @@ def main():
     # ---- 1 + 2: read some answers -----------------------------------------
     rows = load_pope("random")[: args.n]
     print(f"\n{'image':<32} {'question':<42} {'answer':<10} {'parsed':<6} label")
+    # Only answers that start with yes/no count. POPE's fallback rule maps anything without
+    # "no"/"not" to "yes", so garbage such as "!!!!!" (float16 overflow) would otherwise pass.
     correct = 0
     for r in rows:
         ans = vlm.generate(load_image(r["image"]), r["text"] + config.POPE_SUFFIX)
-        pred, _ = parse_yes_no(ans)
-        correct += pred == r["label"]
+        pred, fallback = parse_yes_no(ans)
+        correct += pred == r["label"] and not fallback
         print(f"{r['image']:<32} {r['text'][:40]:<42} {ans[:10]!r:<10} {pred:<6} {r['label']}")
     report("answers look like yes/no", correct >= len(rows) * 0.6, f"{correct}/{len(rows)} correct")
 
     present = next(r for r in rows if r["label"] == "yes")
     ans = vlm.generate(load_image(present["image"]), present["text"] + config.POPE_SUFFIX)
-    report("present object gets 'yes'", parse_yes_no(ans)[0] == "yes", f"{present['text']} -> {ans!r}")
+    report("present object gets 'yes'", parse_yes_no(ans) == ("yes", False), f"{present['text']} -> {ans!r}")
 
     # ---- 5: determinism -----------------------------------------------------
     ans2 = vlm.generate(load_image(present["image"]), present["text"] + config.POPE_SUFFIX)

@@ -113,20 +113,28 @@ def hyphen_adjacent(scored):
             "chair_i": th / tot, "chair_i_without_hyphen": (th - h) / (tot - n)}
 
 
-def qualitative(base, other):
-    """The length-effect example: both captions with their mentions, plus how many images qualify."""
+def qualitative(base, other, image=QUAL_IMAGE):
+    """The length-effect example: both captions with their mentions, plus how many images qualify.
+
+    Returns (example, check). `example` is None when `image` does not meet the criteria in these results.
+    That is expected on other hardware or precision: greedy captions differ slightly between machines, so
+    the image picked by hand from the RTX 4060 run may no longer qualify. The tables do not depend on it,
+    so we skip the figure (report/sections_results.js omits it when the entry is missing) instead of stopping.
+    """
     def n_before(r, m):
         return len(r["caption"][:m["start"]].split())
     qualify = [im for im in set(base) & set(other)
                if other[im]["n_hallucinated"] == 0 and base[im]["n_hallucinated"] > 0
                and all(n_before(base[im], m) >= len(other[im]["caption"].split())
                        for m in base[im]["mentions"] if m["hallucinated"])]
-    assert QUAL_IMAGE in qualify, "the qualitative example no longer meets its criteria"
+    check = {"image": image, "qualifies": image in qualify, "n_qualifying_images": len(qualify)}
+    if not check["qualifies"]:
+        return None, check
     pack = lambda r: {"caption": r["caption"], "n_words": len(r["caption"].split()), "gt_nodes": r["gt_nodes"],
                       "mentions": [{k: m[k] for k in ("word", "node", "start", "end", "hallucinated")}
                                    for m in r["mentions"]]}
-    return {"image": QUAL_IMAGE, "n_qualifying_images": len(qualify), "baseline": pack(base[QUAL_IMAGE]),
-            "intervention": pack(other[QUAL_IMAGE])}
+    return {"image": image, "n_qualifying_images": len(qualify), "baseline": pack(base[image]),
+            "intervention": pack(other[image])}, check
 
 
 def save_example_image(name, path, width=640):
@@ -201,9 +209,16 @@ def main():
         numbers["chair"]["length_matched"] = lm
         numbers["chair"]["hyphen_deviation"] = {"baseline": hyphen_adjacent(base_scored),
                                                 "intervention": hyphen_adjacent(other)}
-        numbers["qualitative"] = qualitative(base_scored, other)
-        if config.IMAGE_DIR.exists():
-            save_example_image(QUAL_IMAGE, config.FIGURE_DIR / "qualitative_example.png")
+        example, numbers["qualitative_check"] = qualitative(base_scored, other)
+        example_png = config.FIGURE_DIR / "qualitative_example.png"
+        if example is None:
+            print(f"[warn] the qualitative example {QUAL_IMAGE} does not meet its criteria in these results "
+                  f"({numbers['qualitative_check']['n_qualifying_images']} test images do); the length-effect "
+                  "figure is skipped. All tables are unaffected.")
+        else:
+            numbers["qualitative"] = example
+            if config.IMAGE_DIR.exists():
+                save_example_image(QUAL_IMAGE, example_png)
         md += ["", "Length-matched control (each pair of captions cut to the shorter one's word count): " +
                f"baseline CHAIR-s {pct(lm['baseline']['chair_s'])}, CHAIR-i {pct(lm['baseline']['chair_i'])}, "
                f"recall {pct(lm['baseline']['recall'])}; intervention CHAIR-s {pct(lm['intervention']['chair_s'])}, "

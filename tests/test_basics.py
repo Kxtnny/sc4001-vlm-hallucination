@@ -309,3 +309,32 @@ def test_pai_mode_batched_rows_match_single_rows():
         with boosted(boost, 0.5, [0, 1, 2], batch["input_ids"] == cfg.image_token_id, mode="pai"):
             both = model(**batch).logits
     assert torch.allclose(both[0, -1], single, atol=1e-4)
+
+
+# ---------------------------------------------------------------------------
+# Report tables: the hand-picked qualitative example must not stop make_report.py
+# ---------------------------------------------------------------------------
+def test_qualitative_example_is_skipped_when_it_no_longer_qualifies():
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
+    import make_report as mr
+
+    def scored(caption, hallucinated_word=None):
+        mentions = []
+        if hallucinated_word:
+            start = caption.index(hallucinated_word)
+            mentions.append({"word": hallucinated_word, "node": hallucinated_word, "start": start,
+                             "end": start + len(hallucinated_word), "hallucinated": True})
+        return {"caption": caption, "mentions": mentions, "n_hallucinated": len(mentions), "gt_nodes": ["dog"]}
+
+    # Qualifies: the baseline's only hallucination comes after the boosted caption has ended.
+    base = {"a.jpg": scored("a dog on grass and far behind it a bird", "bird")}
+    other = {"a.jpg": scored("a dog on grass")}
+    example, check = mr.qualitative(base, other, image="a.jpg")
+    assert check == {"image": "a.jpg", "qualifies": True, "n_qualifying_images": 1}
+    assert example["n_qualifying_images"] == 1 and example["baseline"]["mentions"][0]["word"] == "bird"
+
+    # Does not qualify (as on other hardware, where captions differ): no example, and no exception.
+    other = {"a.jpg": scored("a dog and a bird", "bird")}
+    example, check = mr.qualitative(base, other, image="a.jpg")
+    assert example is None
+    assert check == {"image": "a.jpg", "qualifies": False, "n_qualifying_images": 0}

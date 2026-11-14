@@ -1,4 +1,4 @@
-# Data and results live on Google Drive, never in git
+# Data and results live on Google Drive, never in git (results.zip in the root is a committed snapshot)
 data/
 results/
 *.jsonl

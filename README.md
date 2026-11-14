@@ -27,7 +27,10 @@ laptop (Claude Code) --git push--> GitHub --git pull--> Colab (T4 GPU) --writes-
 ```
 
 - **Code** lives only in GitHub. Edit it on your laptop, never in Colab.
-- **Data and results** live only in the shared Drive folder `MyDrive/sc4001` (never in git).
+- **Data and results** live in the shared Drive folder `MyDrive/sc4001`. The `results/` folder itself is never in git, but
+  `results.zip` in the repository root is a snapshot of the final results (every output behind the report, including the
+  RTX 5060 Ti and V100 reruns). Unzip it into `SC4001_ROOT` (it unpacks to `results/`) to re-derive every table with
+  `python scripts/make_report.py`, no GPU.
 - **Colab** runs `notebooks/colab_runner.ipynb`, which pulls the latest code and calls the scripts.
 
 ## One-time setup
@@ -110,7 +113,7 @@ otherwise every run creates merge conflicts.
 | `scripts/make_report.py` | All report tables (`results/report/tables.md`), significance tests, summary figure |
 | `scripts/run_all.sh` | Runs E0-E6 + report in the right order (resumable) |
 | `scripts/run_extra.sh` | Follow-ups: PAI-style comparison (dev sweep + one test run) and the 200-caption robustness sweep (dev only) |
-| `scripts/make_submission_zip.py` | Builds `SC4001_code.zip` (code, report, saved results; no data or weights) |
+| `scripts/make_submission_zip.py` | Builds `SC4001_code.zip` (code, report, saved results; no data or weights); `--results-only` rebuilds `results.zip` |
 | `scripts/compare_timing.py` | Compares E0 speed reports from different machines |
 | `tc1/` | SLURM job scripts and setup notes for the CCDS TC1 cluster |
 | `tests/` | CPU tests: parsing, metrics, CHAIR, AUROC, and the attention boost on a tiny random Qwen2-VL (incl. alpha = 0 gives identical output) |

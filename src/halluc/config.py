@@ -34,6 +34,11 @@ ATTN_IMPL = "eager"        # Required: sdpa / flash attention do not return atte
 # 256 * 28 * 28 = 200,704 px -> at most 256 image tokens per image.
 MIN_PIXELS = 64 * 28 * 28
 MAX_PIXELS = 256 * 28 * 28
+# Resolution experiment only (tc1/pope_resolution.sbatch): SC4001_IMAGE_TOKENS=N resizes every
+# image to about N tokens (at least N, at most 1.25 N). Unset = the budget above, used everywhere else.
+if os.environ.get("SC4001_IMAGE_TOKENS"):
+    _n = int(os.environ["SC4001_IMAGE_TOKENS"])
+    MIN_PIXELS, MAX_PIXELS = _n * 28 * 28, int(1.25 * _n) * 28 * 28
 
 # ---------------------------------------------------------------------------
 # Prompts. Keep them here so the baseline and later variants are comparable.

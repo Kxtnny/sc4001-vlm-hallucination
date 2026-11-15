@@ -53,6 +53,16 @@ On the V100 the model runs in float32 (`DTYPE = "auto"`): the V100 has no native
 overflows in this model. Copy `~/sc4001/results` to Drive afterwards. Keep all test-set numbers of one
 table from the same machine and precision.
 
+## Resolution experiment (POPE with a larger image budget)
+
+```bash
+cd ~/sc4001-vlm-hallucination && git pull
+sbatch tc1/pope_resolution.sbatch        # random split, three image budgets, batch size 3; resubmit to resume
+cat pope_res_<jobid>.out                 # ends with the comparison table (scripts/resolution_analysis.py)
+```
+The default-budget run in the same job (`res_default_b3`) is the control: compare the larger budgets with it,
+not with the RTX 4060 numbers. Copy `~/sc4001/results/pope/res*_b3/` and `results/analysis/resolution.json` off TC1.
+
 ## Troubleshooting
 
 | Symptom | Fix |

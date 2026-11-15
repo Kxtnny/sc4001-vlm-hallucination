@@ -17,7 +17,7 @@ itself (`report/SC4001_report.pdf`) by `report/build_report.js`.
 - E4: the dev-selected boost (alpha 2, layers 6-13) leaves POPE unchanged and CHAIR-i within noise. Its
   CHAIR-s drop (-4.4 points) disappears when caption length is matched.
 - E5: answer confidence is a much better abstention signal than image attention. The cautious prompt
-  adds +0.3 to +0.6 accuracy points.
+  adds +0.3 to +0.6 accuracy points in the original run, which the full TC1 rerun does not reproduce.
 
 ## How the pieces fit
 

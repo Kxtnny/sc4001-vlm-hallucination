@@ -55,6 +55,9 @@ table from the same machine and precision.
 
 ## Resolution experiment (POPE with a larger image budget)
 
+**Prepared but not run:** this job was not run for the report, so there are no resolution results
+(the report lists a larger image budget as future work, Sections 5.4 and 6).
+
 ```bash
 cd ~/sc4001-vlm-hallucination && git pull
 sbatch tc1/pope_resolution.sbatch        # random split, three image budgets, batch size 3; resubmit to resume

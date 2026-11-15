@@ -1,5 +1,5 @@
 {
- "description": "Random sample (random.seed(0); random.sample of the 341 CHAIR-hallucinated mentions in results/chair/baseline/chair_test_scored.jsonl, in file order) of 30 mentions, labelled by reading the caption context only (not the image). Labels were proposed by Claude and must be checked by the team.",
+ "description": "Random sample (random.seed(0); random.sample of the 341 CHAIR-hallucinated mentions in results/chair/baseline/chair_test_scored.jsonl, in file order) of 30 mentions, labelled by reading the caption context only (not the image). Labels were proposed by Claude and checked by the team.",
  "n_hallucinated_total": 341,
  "counts": {
   "scoring artefact": 18,

@@ -110,6 +110,8 @@ otherwise every run creates merge conflicts.
 | `scripts/sweep.py` | E4 alpha x layer sweep on dev; writes the frozen setting `results/sweep/selected.json` |
 | `scripts/abstention.py` | E5 abstention: accuracy vs coverage (attention vs answer confidence vs random); caption filter |
 | `scripts/failure_cases.py` | E6 failure cases: where the intervention hurts or still hallucinates |
+| `scripts/abstention_combined.py` | E5 follow-up: does layer-20 image attention add to answer confidence? (logistic regressions fitted on dev; Section 4.5) |
+| `scripts/resolution_analysis.py` | E6 follow-up: POPE recall by object size (`--control baseline --tags intervention --out-name recall_by_size`; Section 5.2) |
 | `scripts/make_report.py` | All report tables (`results/report/tables.md`), significance tests, summary figure |
 | `scripts/run_all.sh` | Runs E0-E6 + report in the right order (resumable) |
 | `scripts/run_extra.sh` | Follow-ups: PAI-style comparison (dev sweep + one test run) and the 200-caption robustness sweep (dev only) |
@@ -163,6 +165,8 @@ python scripts/eval_pope.py --split all --tag cautious --cautious               
 python scripts/abstention.py                                  # E5 (Fig. accuracy vs coverage, Table E5)
 python scripts/failure_cases.py                               # E6 (Fig. failure cases, failure_cases.md)
 python scripts/make_report.py                                 # all tables -> results/report/tables.md
+python scripts/abstention_combined.py                         # E5 follow-up (Section 4.5) -> results/analysis/abstention_combined.json
+python scripts/resolution_analysis.py --control baseline --tags intervention --out-name recall_by_size   # E6 follow-up (Section 5.2)
 bash scripts/run_extra.sh                                     # follow-ups (about 5 h): PAI-style comparison, 200-caption sweep
 python scripts/analyze_attention.py --split dev --plot-only   # (redraw an E3 figure from saved JSON, seconds)
 python scripts/make_submission_zip.py                         # SC4001_code.zip for NTULearn

@@ -173,11 +173,10 @@ python scripts/make_submission_zip.py                         # SC4001_code.zip 
 python -m pytest -q tests                                     # unit tests (CPU, ~40 s)
 ```
 
-**Report.** `report/SC4001_report.docx` is the working copy of the report: **edit it directly in Word**
-(cover page names and group number, AI Use Statement, wording), then save it as PDF from Word
-(File > Save As > PDF) or run `report/to_pdf.ps1`, which refreshes the contents page and exports
-`report/SC4001_report.pdf` without touching the text. The first version was generated from the saved
-results with Node.js and the `docx` npm package (`npm install docx`):
+**Report.** The submitted report is `report/SC4001_report.pdf`. Its editable source was kept outside the
+repository, so no `.docx` is included. The first draft was generated from the saved results with Node.js
+and the `docx` npm package (`npm install docx`), then edited by hand; these commands rebuild that first
+draft (not the final text):
 
 ```bash
 SC4001_RESULTS=$SC4001_ROOT/results node report/build_report.js --overwrite   # regenerate the .docx (DISCARDS Word edits)
